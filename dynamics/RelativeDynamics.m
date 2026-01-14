@@ -12,77 +12,66 @@ classdef RelativeDynamics < handle
         MU       % (1x1) Gravitational parameter [m^3/s^2]
         
         % System State (Managed internally)
-        state    % (12x1) [sigma; omega; rho; vel]
-        time     % Current simulation time [s]
-        dt       % Time step
+        state   % (12x1) [sigma; omega; rho; vel]
+        dt      % Time step
+        rho_c   % Chaser position in ECI frame
+        att_c   % Chaser attitude relative to ECI
+        omg_c   % Chaser angular velocity relative to ECI
+
+        Target  SatelliteDynamics
     end
     
-    properties (Dependent)
-        % Helper properties to access state components easily
-        sigma    % (3x1) MRP Attitude
-        omega    % (3x1) Angular Velocity
-        rho      % (3x1) Relative Position
-        vel      % (3x1) Relative Velocity
-    end
     
     methods
         % Constructor
-        function obj = RelativeDynamics(J_c, m_c, initial_state, dt)
+        function obj = RelativeDynamics(initial_state, dt, targetSatellite)
             % J_c: Inertia matrix (3x3)
             % m_c: Mass (scalar)
             % initial_state: (12x1) Initial state vector
             % dt: Dynamics time step
             
-            obj.J_c = J_c;
-            obj.inv_J_c = inv(J_c);
-            obj.m_c = m_c;
-            obj.MU = 398600.4418 * 1e9; % Default Earth (m^3/s^2) if not provided
+            obj.J_c = [124.4, 22.5, -21.5;...
+                        22.5, 163.6, -7;...
+                       -21.5, -7, 128.3];
+            obj.inv_J_c = eye(3)/obj.J_c;
+            obj.m_c = 38.2;
+            obj.MU = 3.986004e14;
             obj.dt = dt;
             
-            % Initialize State
-            if nargin < 3 || isempty(initial_state)
-                obj.state = zeros(12, 1);
-            else
-                obj.state = initial_state(:); % Ensure column vector
-            end
-            obj.time = 0.0;
+            obj.state = zeros([12, 1]);
+            obj.state(1:3) = initial_state.sigma;
+            obj.state(4:6) = initial_state.omega;
+            obj.state(7:9) = initial_state.rho;
+            obj.state(10:12) = initial_state.vel;
+
+            obj.rho_c = zeros([3, 1]);
+            obj.att_c = zeros([3, 1]);
+            obj.omg_c = zeros([3, 1]);
+
+            obj.Target = targetSatellite;
         end
         
         % Time Update (Main Method)
-        function step(obj, u_ctrl, u_dist, target_state)
+        function step(obj, u_ctrl, u_dist)
             % STEP Performs RK4 integration and updates internal state
             %
             % Usage: obj.step(dt, u_ctrl, u_dist, target_state)
             
-            t_curr = obj.time;
             x_curr = obj.state;
             
             % RK4 Integration
-            k1 = obj.dynamics(           t_curr,                 x_curr,    u_ctrl, u_dist, target_state);
-            k2 = obj.dynamics(t_curr + obj.dt/2,   x_curr + obj.dt/2*k1,    u_ctrl, u_dist, target_state);
-            k3 = obj.dynamics(t_curr + obj.dt/2,   x_curr + obj.dt/2*k2,    u_ctrl, u_dist, target_state);
-            k4 = obj.dynamics(  t_curr + obj.dt,     x_curr + obj.dt*k3,    u_ctrl, u_dist, target_state);
+            k1 = obj.dynamics(              x_curr, u_ctrl, u_dist);
+            k2 = obj.dynamics(x_curr + obj.dt/2*k1, u_ctrl, u_dist);
+            k3 = obj.dynamics(x_curr + obj.dt/2*k2, u_ctrl, u_dist);
+            k4 = obj.dynamics(  x_curr + obj.dt*k3, u_ctrl, u_dist);
             
             % Update State
             obj.state = x_curr + (obj.dt/6) * (k1 + 2*k2 + 2*k3 + k4);
-            
-            % Update Time
-            obj.time = t_curr + obj.dt;
+
+            obj.get_chaser_pos();
+            obj.get_chaser_euler();
         end
 
-        % Dependent Property Getters
-        function val = get.sigma(obj)
-            val = obj.state(1:3);
-        end
-        function val = get.omega(obj)
-            val = obj.state(4:6);
-        end
-        function val = get.rho(obj)
-            val = obj.state(7:9);
-        end
-        function val = get.vel(obj)
-            val = obj.state(10:12);
-        end
         
         % Math Helpers
         function S = skew(~, x)
@@ -104,7 +93,7 @@ classdef RelativeDynamics < handle
         end
         
         % Dynamics (Internal Calculation)
-        function dstate = dynamics(obj, t, x, u_ctrl, u_dist, target_state)
+        function dstate = dynamics(obj, x, u_ctrl, u_dist)
             % Calculates dx/dt given a specific state x.
             % Note: We pass 'x' explicitly to support RK4 intermediate steps.
             
@@ -119,15 +108,15 @@ classdef RelativeDynamics < handle
             f_ctrl = u_ctrl.f;
             f_d = u_dist.f_d;
             
-            w_t = target_state.w_t;
-            dw_t = target_state.dw_t;
-            r_t = target_state.r_t;
-            dv_t = target_state.dv_t;
+            w_t = obj.Target.stateECI(10:12);
+            dw_t = zeros([3, 1]); % Temporal setting (placeholder)
+            r_t = obj.Target.stateECI(1:3);
+            dv_t = -obj.MU*r_t/norm(r_t)^3;
             
             % Kinematics and Dynamics Setup
             R_tc = obj.get_Rt_c(s_curr);
             Rw_t = R_tc * w_t;
-            w_c = w_curr + Rw_t; % Chaser angular velocity
+            w_c = w_curr + Rw_t; % Chaser relative angular velocity
             
             Omega_wc = obj.skew(w_c);
             Omega_Rwt = obj.skew(Rw_t);
@@ -156,5 +145,52 @@ classdef RelativeDynamics < handle
             dstate = [dsigma; domega; drho; dv];
         end
         
+        function get_chaser_euler(obj)
+            % GET_CHASER_EULER Computes Chaser's Euler angles from Target's Euler and Relative MRP
+            %
+            % Output:
+            %   att_c: [roll, pitch, yaw] (rad) of Chaser w.r.t ECI
+            
+            phi = obj.Target.stateECI(7);
+            theta = obj.Target.stateECI(8);
+            psi = obj.Target.stateECI(9);
+            
+            R_i_t = angle2dcm(psi, theta, phi, 'ZYX');
+            
+            s = obj.state(1:3);
+            s_sq = s' * s;
+            skew_s = obj.skew(s);
+            denom = (1 + s_sq)^2;
+            
+            R_t_c = eye(3) - (4*(1-s_sq)/denom)*skew_s + (8/denom)*(skew_s*skew_s);
+            
+            R_i_c = R_t_c * R_i_t;
+            
+            roll_c  = atan2(R_i_c(2,3), R_i_c(3,3));
+            if R_i_c(1,3) > 1 || R_i_c(1, 3) < -1
+                error("Out of range");
+            end
+            pitch_c = -asin(R_i_c(1,3));
+            yaw_c   = atan2(R_i_c(1,2), R_i_c(1,1));
+            
+            obj.att_c = [roll_c; pitch_c; yaw_c];
+        end
+
+        function get_chaser_pos(obj)
+            % GET_CHASER_POS Computes Chaser's position represented in ECI frame
+            %
+            % Output:
+            %   pos_c: [x, y, z] (m) of Chaser w.r.t ECI
+            
+            obj.rho_c = obj.state(7:9) + obj.Target.stateECI(1:3);
+        end
+
+        function get_chaser_omg(obj)
+            R_tc = obj.get_Rt_c(x(1:3));
+            w_t = obj.Target.stateECI(10:12);
+            w_curr = obj.state(4:6);
+            Rw_t = R_tc * w_t;
+            obj.omg_c = w_curr + Rw_t; % Chaser relative angular velocity
+        end
     end
 end
