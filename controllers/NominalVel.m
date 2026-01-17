@@ -59,10 +59,8 @@ classdef NominalVel < handle
             quadprog_f(4) = obj.p_relax;
             quadprog_f(1:3) = 0;
 
-            A = [obj.LgV, -1;...
-                 -obj.LgB, 0];
-            b = [-obj.gamma * obj.V - obj.LfV;...
-                 obj.alpha * obj.B - obj.LfB];
+            A = [obj.LgV, -1];
+            b = [-obj.gamma * obj.V - obj.LfV];
             [output, ~, exitflag, ~] = quadprog(quadprog_H, quadprog_f, A, b, [], [], [], [], [], obj.qp_options);
             Force = output(1:3);
             slack = output(4);
@@ -78,16 +76,21 @@ classdef NominalVel < handle
         %%%%%%%%%% CLF Functions (V = 0.5 * eV' * eV) %%%%%%%%%%
         % ========================================================
         function update_clf(obj, state, V_d)
-            % Compute clf V
+            % Compute value of control lyapunov function V
             vel = state(10:12);
             eV = V_d - vel;
             obj.V = 0.5 * (eV' * eV);
+            
+            % Compute LfV and LgV
             if isnan(obj.Vd_prev)
                 obj.Vd_prev = V_d;
             end
-            dotV = (vel - obj.Vd_prev)./obj.dt;
+            dotVd = (vel - obj.Vd_prev)./obj.dt;
+            obj.Vd_prev = V_d;
+
             S_omega_c = obj.RelativeChaser.skew(obj.RelativeChaser.omg_c);
-            obj.LfV = eV' * (dot + S_omega_c * vel + obj.RelativeChaser.Target.gravitational_force())
+            obj.LfV = eV' * (dotVd + S_omega_c * vel + obj.RelativeChaser.Target.gravitational_force() + obj.RelativeChaser.gravitational_force());
+            obj.LgV = -eV'./obj.RelativeChaser.m_c;
         end
 
         

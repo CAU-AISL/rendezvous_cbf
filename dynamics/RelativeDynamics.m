@@ -110,8 +110,7 @@ classdef RelativeDynamics < handle
             
             w_t = obj.Target.stateECI(10:12);
             dw_t = zeros([3, 1]); % Temporal setting (placeholder)
-            r_t = obj.Target.stateECI(1:3);
-            dv_t = obj.Target.gravitational_force(r_t);
+            dv_t = obj.Target.gravitational_force();
             
             % Kinematics and Dynamics Setup
             R_tc = obj.get_Rt_c(s_curr);
@@ -134,12 +133,9 @@ classdef RelativeDynamics < handle
             drho = v_curr - (Omega_wc * r_curr);
             
             % dv
-            r_c = r_curr + (R_tc * r_t); % Chaser position vector
-            r_c_norm = norm(r_c);
-            
             C2 = -Omega_wc;
-            D2 = -(obj.MU / r_c_norm^3) * r_c - (R_tc * dv_t);
-            
+            f_g = obj.gravitational_force();
+            D2 = f_g - (R_tc * dv_t);
             dv = (C2 * v_curr) + D2 + ( f_ctrl + f_d ) / obj.m_c;
             
             dstate = [dsigma; domega; drho; dv];
@@ -192,7 +188,13 @@ classdef RelativeDynamics < handle
             Rw_t = R_tc * w_t;
             obj.omg_c = w_curr + Rw_t; % Chaser relative angular velocity
         end
-
         
+        function f_g = gravitational_force(obj)
+            r_t = obj.Target.stateECI(1:3);
+            R_tc = obj.get_Rt_c(obj.state(1:3));
+            r_c = obj.state(7:9) + R_tc * r_t;
+            r_c_norm = norm(r_c);
+            f_g = -(obj.MU / r_c_norm^3) * r_c;
+        end
     end
 end

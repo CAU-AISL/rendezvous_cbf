@@ -108,8 +108,9 @@ classdef SatelliteDynamics < handle
             R = (Rzomg*RxInc*RzOmg)';
         end
 
-        function f_tb = gravitational_force(obj, r_t)
+        function f_tb = gravitational_force(obj)
             % Compute gravitational force acting on the target satellite in target frame
+            r_t = obj.stateECI(1:3);
             r = norm(r_t);
             f_t = -obj.MU * r_t / r^3;
             att = obj.stateECI(7:9);
