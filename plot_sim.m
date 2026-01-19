@@ -59,14 +59,17 @@ velPlot.Position(3:4) = fig_size;
 subplot(3, 1, 1);
 hold on; grid on;
 plot(time_span, RelativeLogger.state.log(10,:), 'LineWidth', line_width);
+plot(time_span, ControlLogger.vel_d.log(1,:), '--', 'LineWidth', line_width);
 ylabel('V_x (m/s)', 'Interpreter', 'tex');
 subplot(3, 1, 2);
 hold on; grid on;
 plot(time_span, RelativeLogger.state.log(11,:), 'LineWidth', line_width);
+plot(time_span, ControlLogger.vel_d.log(2,:), '--', 'LineWidth', line_width);
 ylabel('V_y (m/s)', 'Interpreter', 'tex');
 subplot(3, 1, 3);
 hold on; grid on;
 plot(time_span, RelativeLogger.state.log(12,:), 'LineWidth', line_width);
+plot(time_span, ControlLogger.vel_d.log(3,:), '--', 'LineWidth', line_width);
 ylabel('V_z (m/s)', 'Interpreter', 'tex');
 xlabel('Time (s)', 'Interpreter', 'tex');
 saveas(gcf, 'assets/vel_plot.png');
@@ -107,8 +110,27 @@ ylabel('\omega_z (deg/s)', 'Interpreter', 'tex');
 xlabel('Time (s)', 'Interpreter', 'tex');
 saveas(gcf, 'assets/omg_plot.png');
 
+forcePlot = figure();
+forcePlot.Theme = 'light';
+forcePlot.Position(3:4) = fig_size;
+subplot(3, 1, 1);
+hold on; grid on;
+plot(time_span, ControlLogger.force.log(1,:), 'LineWidth', line_width);
+ylabel('F_x (N)', 'Interpreter', 'tex');
+subplot(3, 1, 2);
+hold on; grid on;
+plot(time_span, ControlLogger.force.log(2,:), 'LineWidth', line_width);
+ylabel('F_y (N)', 'Interpreter', 'tex');
+subplot(3, 1, 3);
+hold on; grid on;
+plot(time_span, ControlLogger.force.log(3,:), 'LineWidth', line_width);
+ylabel('F_z (N)', 'Interpreter', 'tex');
+xlabel('Time (s)', 'Interpreter', 'tex');
+saveas(gcf, 'assets/force_plot.png');
+
+
 %%
-sim_flag = false;
+sim_flag = true;
 if sim_flag
     epochYear = 2026;
     epochMonth = 1;

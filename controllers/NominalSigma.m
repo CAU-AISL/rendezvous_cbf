@@ -1,5 +1,5 @@
-classdef NominalVel < handle
-    % NominalVel Implements CLF-CBF-QP based nominal controller
+classdef NominalSigma < handle
+    % NominalSigma Implements CLF-CBF-QP based nominal controller
     % Incorporates coordinate transformation for CBF defined in Target Frame
     
     properties
@@ -22,7 +22,7 @@ classdef NominalVel < handle
     end
     
     methods
-        function obj = NominalVel(control_setting, relativeDynamics)
+        function obj = NominalSigma(control_setting, relativeDynamics)
             obj.gamma = control_setting.gamma;
             obj.alpha = control_setting.alpha;
             obj.p_relax = control_setting.p_relax;
@@ -39,56 +39,44 @@ classdef NominalVel < handle
             obj.LfB = 0;
             obj.LgB = zeros([1, 3]);
             
-            % Geometric Parameters for the Barrier Function
-            obj.Alpha = 0.02; 
-            obj.Delta = 0.1;
 
             obj.RelativeChaser = relativeDynamics;
         end
 
-        function [Force, slack, feas] = command(obj, V_d)
+        function [omg_d, slack, feas] = command(obj)
             state = obj.RelativeChaser.state;
-            obj.update_clf(state, V_d);
+            obj.update_clf(state);
             % obj.update_cbf(state);
-            
-            quadprog_H = eye(3);
-            quadprog_f = zeros([3, 1]);
+            quadprog_H = blkdiag(eye(3), obj.p_relax);
+            quadprog_f = zeros([4, 1]);
 
             A = obj.LgV;
             b = -obj.gamma * obj.V - obj.LfV;
             [output, ~, exitflag, ~] = quadprog(quadprog_H, quadprog_f, A, b, [], [], [], [], [], obj.qp_options);
             
             if exitflag == -2
-                Force = zeros(3,1);
+                omg_d = zeros(3,1);
                 feas = 0;
                 disp("Infeasible QP. CBF constraint is conflicting with input constraints.");
             else
-                Force = output;
+                omg_d = output(1:3);
                 feas = 1;
             end
             slack = 0;
         end
         
         % ========================================================
-        %%%%%%%%%% CLF Functions (V = 0.5 * eV' * eV) %%%%%%%%%%
+        %%%%%%%%%% CLF Functions (V = 0.5 * sigma' * sigma) %%%%%%%%%%
         % ========================================================
-        function update_clf(obj, state, V_d)
+        function update_clf(obj, state)
             % Compute value of control lyapunov function V
-            vel = state(10:12);
-            eV = V_d - vel;
-            obj.V = 0.5 * (eV' * eV);
-            
-            % Compute LfV and LgV
-            if isnan(obj.Vd_prev)
-                obj.Vd_prev = V_d;
-            end
-            dotVd = (vel - obj.Vd_prev)./obj.dt;
-            obj.Vd_prev = V_d;
+            sigma = state(10:12);
+            obj.V = 0.5 * (sigma' * sigma);
 
-            S_omega_c = obj.RelativeChaser.skew(obj.RelativeChaser.omg_c);
-            obj.LfV = eV' * (S_omega_c * vel + obj.RelativeChaser.Target.gravitational_force() + obj.RelativeChaser.gravitational_force());
-            % obj.LfV = eV' * (dotVd + S_omega_c * vel + obj.RelativeChaser.Target.gravitational_force() + obj.RelativeChaser.gravitational_force());
-            obj.LgV = -eV'./obj.RelativeChaser.m_c;
+            G_sigma = obj.RelativeChaser.get_G_matrix(sigma);
+            
+            obj.LfV = 0;
+            obj.LgV = sigma' * G_sigma;
         end
 
         
