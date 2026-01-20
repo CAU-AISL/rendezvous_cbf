@@ -196,5 +196,31 @@ classdef RelativeDynamics < handle
             r_c_norm = norm(r_c);
             f_g = -(obj.MU / r_c_norm^3) * r_c;
         end
+
+        function c1 = get_C1(obj)
+            s = obj.state(1:3);
+            w = obj.state(4:6);
+            R_tc = obj.get_Rt_c(s);
+            w_t = obj.Target.stateECI(10:12);
+            Rw_t = R_tc * w_t;
+            w_c = w + Rw_t; % Chaser relative angular velocity
+
+            S_Rwt = obj.skew(Rw_t);
+
+            c1 = -obj.J_c*S_Rwt - S_Rwt*obj.J_c + obj.skew(obj.J_c*w_c);
+        end
+
+        function d1 = get_D1(obj)
+            s = obj.state(1:3);
+            R_tc = obj.get_Rt_c(s);
+            w_t = obj.Target.stateECI(10:12);
+            dw_t = zeros([3, 1]); % Temporal setting (placeholder)
+
+            Rw_t = R_tc * w_t;
+
+            S_Rwt = obj.skew(Rw_t);
+
+            d1 = -S_Rwt*(obj.J_c*Rw_t) - obj.J_c*(R_tc*dw_t);
+        end
     end
 end

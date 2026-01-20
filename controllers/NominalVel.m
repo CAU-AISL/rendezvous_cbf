@@ -39,9 +39,6 @@ classdef NominalVel < handle
             obj.LfB = 0;
             obj.LgB = zeros([1, 3]);
             
-            % Geometric Parameters for the Barrier Function
-            obj.Alpha = 0.02; 
-            obj.Delta = 0.1;
 
             obj.RelativeChaser = relativeDynamics;
         end

@@ -32,7 +32,7 @@ if plot_earth
     zlabel("z-axis (km)");
 end
 %%
-fig_size = [800, 450];
+fig_size = [1300, 500];
 line_width = 1.5;
 
 posPlot = figure();
@@ -98,14 +98,17 @@ omgPlot.Position(3:4) = fig_size;
 subplot(3, 1, 1);
 hold on; grid on;
 plot(time_span, rad2deg(RelativeLogger.state.log(4,:)), 'LineWidth', line_width);
+plot(time_span, rad2deg(ControlLogger.omg_d.log(1,:)), '--', 'LineWidth', line_width);
 ylabel('\omega_x (deg/s)', 'Interpreter', 'tex');
 subplot(3, 1, 2);
 hold on; grid on;
 plot(time_span, rad2deg(RelativeLogger.state.log(5,:)), 'LineWidth', line_width);
+plot(time_span, rad2deg(ControlLogger.omg_d.log(2,:)), '--', 'LineWidth', line_width);
 ylabel('\omega_y (deg/s)', 'Interpreter', 'tex');
 subplot(3, 1, 3);
 hold on; grid on;
 plot(time_span, rad2deg(RelativeLogger.state.log(6,:)), 'LineWidth', line_width);
+plot(time_span, rad2deg(ControlLogger.omg_d.log(3,:)), '--', 'LineWidth', line_width);
 ylabel('\omega_z (deg/s)', 'Interpreter', 'tex');
 xlabel('Time (s)', 'Interpreter', 'tex');
 saveas(gcf, 'assets/omg_plot.png');
@@ -129,8 +132,27 @@ xlabel('Time (s)', 'Interpreter', 'tex');
 saveas(gcf, 'assets/force_plot.png');
 
 
+momentPlot = figure();
+momentPlot.Theme = 'light';
+momentPlot.Position(3:4) = fig_size;
+subplot(3, 1, 1);
+hold on; grid on;
+plot(time_span, ControlLogger.moment.log(1,:), 'LineWidth', line_width);
+ylabel('M_x (N)', 'Interpreter', 'tex');
+subplot(3, 1, 2);
+hold on; grid on;
+plot(time_span, ControlLogger.moment.log(2,:), 'LineWidth', line_width);
+ylabel('M_y (N)', 'Interpreter', 'tex');
+subplot(3, 1, 3);
+hold on; grid on;
+plot(time_span, ControlLogger.moment.log(3,:), 'LineWidth', line_width);
+ylabel('M_z (N)', 'Interpreter', 'tex');
+xlabel('Time (s)', 'Interpreter', 'tex');
+saveas(gcf, 'assets/moment_plot.png');
+
 %%
-sim_flag = true;
+sim_flag = false;
+% sim_flag = true;
 if sim_flag
     epochYear = 2026;
     epochMonth = 1;

@@ -47,8 +47,8 @@ classdef NominalSigma < handle
             state = obj.RelativeChaser.state;
             obj.update_clf(state);
             % obj.update_cbf(state);
-            quadprog_H = blkdiag(eye(3), obj.p_relax);
-            quadprog_f = zeros([4, 1]);
+            quadprog_H = eye(3);
+            quadprog_f = zeros([3, 1]);
 
             A = obj.LgV;
             b = -obj.gamma * obj.V - obj.LfV;
@@ -59,7 +59,7 @@ classdef NominalSigma < handle
                 feas = 0;
                 disp("Infeasible QP. CBF constraint is conflicting with input constraints.");
             else
-                omg_d = output(1:3);
+                omg_d = output;
                 feas = 1;
             end
             slack = 0;

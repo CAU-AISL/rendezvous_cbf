@@ -39,11 +39,14 @@ NominalCtrl = NominalController(ChaserSatellite);
 control_log.n = 3;
 control_log.m = sim_length;
 ControlLogger = struct('force', Logger(control_log),...
-                       'vel_d', Logger(control_log));
+                       'vel_d', Logger(control_log),...
+                       'omg_d', Logger(control_log),...
+                       'moment', Logger(control_log));
 
 for i = 1:length(time_span)
-    u_ctrl.tau = zeros([3, 1]);
-    u_ctrl.f = NominalCtrl.compute_control();
+    % u_ctrl.tau = zeros([3, 1]);
+    % u_ctrl.f = NominalCtrl.compute_control();
+    u_ctrl = NominalCtrl.compute_control();
     u_dist.tau_d = zeros([3, 1]);
     u_dist.f_d = zeros([3, 1]);
     TargetSatellite.step();
@@ -55,6 +58,8 @@ for i = 1:length(time_span)
     ChaserLogger.att.log_data(ChaserSatellite.att_c);
     ControlLogger.vel_d.log_data(NominalCtrl.nominalLogRho.Vd);
     ControlLogger.force.log_data(NominalCtrl.nominalLogVel.Force);
+    ControlLogger.omg_d.log_data(NominalCtrl.nominalLogSig.Omgd);
+    ControlLogger.moment.log_data(NominalCtrl.nominalLogOmg.Moment);
 end
 
 run("plot_sim.m");
