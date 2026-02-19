@@ -21,7 +21,6 @@ classdef RelativeDynamics < handle
         Target  SatelliteDynamics
     end
     
-    
     methods
         % Constructor
         function obj = RelativeDynamics(initial_state, dt, targetSatellite)
@@ -71,26 +70,6 @@ classdef RelativeDynamics < handle
             obj.get_chaser_pos();
             obj.get_chaser_euler();
         end
-
-        
-        % Math Helpers
-        function S = skew(~, x)
-            S = [0,    -x(3),  x(2);
-                 x(3),  0,    -x(1);
-                -x(2),  x(1),  0];
-        end
-        
-        function G = get_G_matrix(obj, s)
-            s_sq = s' * s;
-            G = 0.25 * ((1 - s_sq)*eye(3) + 2*obj.skew(s) + 2*(s*s'));
-        end
-        
-        function R = get_Rt_c(obj, s)
-            s_sq = s' * s;
-            Omega_s = obj.skew(s);
-            denom = (1 + s_sq)^2;
-            R = eye(3) - (4*(1-s_sq)/denom)*Omega_s + (8/denom)*(Omega_s*Omega_s);
-        end
         
         % Dynamics (Internal Calculation)
         function dstate = dynamics(obj, x, u_ctrl, u_dist)
@@ -110,8 +89,7 @@ classdef RelativeDynamics < handle
             
             w_t = obj.Target.stateECI(10:12);
             dw_t = zeros([3, 1]); % Temporal setting (placeholder)
-            r_t = obj.Target.stateECI(1:3);
-            dv_t = -obj.MU*r_t/norm(r_t)^3;
+            dv_t = obj.Target.gravitational_force();
             
             % Kinematics and Dynamics Setup
             R_tc = obj.get_Rt_c(s_curr);
@@ -134,13 +112,10 @@ classdef RelativeDynamics < handle
             drho = v_curr - (Omega_wc * r_curr);
             
             % dv
-            r_c = r_curr + (R_tc * r_t); % Chaser position vector
-            r_c_norm = norm(r_c);
-            
             C2 = -Omega_wc;
-            D2 = -(obj.MU / r_c_norm^3) * r_c - (R_tc * dv_t);
-            
-            dv = ( (obj.m_c * (C2 * v_curr)) + (obj.m_c * D2) + f_ctrl + f_d ) / obj.m_c;
+            f_g = obj.gravitational_force();
+            D2 = f_g - (R_tc * dv_t);
+            dv = (C2 * v_curr) + D2 + ( f_ctrl + f_d ) / obj.m_c;
             
             dstate = [dsigma; domega; drho; dv];
         end
@@ -186,11 +161,62 @@ classdef RelativeDynamics < handle
         end
 
         function get_chaser_omg(obj)
-            R_tc = obj.get_Rt_c(x(1:3));
+            R_tc = obj.get_Rt_c(obj.state(1:3));
             w_t = obj.Target.stateECI(10:12);
             w_curr = obj.state(4:6);
             Rw_t = R_tc * w_t;
             obj.omg_c = w_curr + Rw_t; % Chaser relative angular velocity
+        end
+        
+        function f_g = gravitational_force(obj)
+            r_t = obj.Target.stateECI(1:3);
+            R_tc = obj.get_Rt_c(obj.state(1:3));
+            r_c = obj.state(7:9) + R_tc * r_t;
+            r_c_norm = norm(r_c);
+            f_g = -(obj.MU / r_c_norm^3) * r_c;
+        end
+
+        function c1 = get_C1(obj)
+            w = obj.state(4:6);
+            R_tc = obj.get_Rt_c(obj.state(1:3));
+            w_t = obj.Target.stateECI(10:12);
+            Rw_t = R_tc * w_t;
+            w_c = w + Rw_t; % Chaser relative angular velocity
+
+            S_Rwt = obj.skew(Rw_t);
+
+            c1 = -obj.J_c*S_Rwt - S_Rwt*obj.J_c + obj.skew(obj.J_c*w_c);
+        end
+
+        function d1 = get_D1(obj)
+            s = obj.state(1:3);
+            R_tc = obj.get_Rt_c(s);
+            w_t = obj.Target.stateECI(10:12);
+            dw_t = zeros([3, 1]); % Temporal setting (placeholder)
+
+            Rw_t = R_tc * w_t;
+
+            S_Rwt = obj.skew(Rw_t);
+
+            d1 = -S_Rwt*(obj.J_c*Rw_t) - obj.J_c*(R_tc*dw_t);
+        end
+
+        % Math Helpers
+        function S = skew(~, x)
+            S = [0,    -x(3),  x(2);
+                 x(3),  0,    -x(1);
+                -x(2),  x(1),  0];
+        end
+        
+        function G = get_G_matrix(obj, s)
+            G = 0.25 * ((1 - s' * s)*eye(3) + 2*obj.skew(s) + 2*(s*s'));
+        end
+        
+        function R = get_Rt_c(obj, s)
+            s_sq = s' * s;
+            Omega_s = obj.skew(s);
+            denom = (1 + s_sq)^2;
+            R = eye(3) - (4*(1-s_sq)/denom)*Omega_s + (8/denom)*(Omega_s*Omega_s);
         end
     end
 end

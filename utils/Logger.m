@@ -5,8 +5,8 @@ classdef Logger < handle
     end
 
     methods
-        function obj = Logger(logger_size)
-            obj.log = zeros([logger_size.n, logger_size.m]);
+        function obj = Logger(n, m)
+            obj.log = zeros([n, m]);
             obj.index = 1;
         end
 

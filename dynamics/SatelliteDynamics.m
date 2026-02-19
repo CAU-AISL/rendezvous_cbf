@@ -30,11 +30,11 @@ classdef SatelliteDynamics < handle
             obj.stateECI = zeros(12, 1); % Initialize state vector in ECI frame
             obj.COE2ECI();
             obj.stateCOE = [obj.a;...
-                            obj.e;...
-                            obj.i;...
-                            obj.Omega;...
-                            obj.omega;...
-                            obj.f0];
+                obj.e;...
+                obj.i;...
+                obj.Omega;...
+                obj.omega;...
+                obj.f0];
 
             obj.time = 0;
             obj.dt = dt;
@@ -48,7 +48,7 @@ classdef SatelliteDynamics < handle
             k2 = obj.dynamics(x_curr + obj.dt/2*k1);
             k3 = obj.dynamics(x_curr + obj.dt/2*k2);
             k4 = obj.dynamics(x_curr + obj.dt*k3);
-            
+
             % Update the current time and state vector
             obj.time = obj.time + obj.dt;
             obj.stateECI = x_curr + (obj.dt/6) * (k1 + 2*k2 + 2*k3 + k4);
@@ -57,36 +57,59 @@ classdef SatelliteDynamics < handle
         function dstate = dynamics(obj, x)
             pos = x(1:3);
             vel = x(4:6);
-            att = x(7:9);
+            euler = x(7:9); % [phi; theta; psi] (Roll, Pitch, Yaw)
             omg = x(10:12);
-
-            % Compute the gravitational acceleration
+            
             r = norm(pos);
+            
             acc = -obj.MU * pos / r^3;
+            
+            % Z-Y-X Sequence (Standard Aerospace)
+            phi = euler(1); 
+            theta = euler(2);
 
-            % Update the state derivative
-            dstate = zeros(12, 1);
-            dstate(1:3) = vel;  % Position derivative
-            dstate(4:6) = acc;  % Velocity derivative
-            dstate(7:9) = zeros(3, 1);  % Attitude dynamics (placeholder)
-            dstate(10:12) = zeros(3, 1); % Angular rate dynamics (placeholder)
+            c_phi = cos(phi);
+            s_phi = sin(phi);
+            c_th  = cos(theta);
+            s_th  = sin(theta);
+
+            if abs(c_th) < 1e-4
+                c_th = sign(c_th) * 1e-4;
+                if c_th == 0, c_th = 1e-4; end
+                warning("Singularity approaching at theta = %.2f deg", rad2deg(theta));
+            end
+
+            t_th = s_th / c_th;
+
+            H = [1,  s_phi * t_th,   c_phi * t_th;
+                0,  c_phi,         -s_phi;
+                0,  s_phi / c_th,   c_phi / c_th];
+             
+            d_euler = H * omg;
+            
+            % Assuming Target is a rigid body with constant angular velocity 
+            % (Torque-free motion approximation for simple target)
+            d_omg = zeros(3, 1); 
+            % If you have inertia J, use: d_omg = J \ (-cross(omg, J*omg));
+            
+            dstate = [vel; acc; d_euler; d_omg];
         end
 
         function COE2ECI(obj)
             % h: Angular momentum
             h = sqrt(obj.MU*obj.a*(1 - obj.e^2));
-            rotm_E2P = obj.rotm_ECI2PFC();
+            rotm_P2E = obj.rotm_PFC2ECI();
 
             % Position in perifocal frame
             p = (h^2 / obj.MU) * (1 / (1 + obj.e * cos(obj.f0))) * [cos(obj.f0); sin(obj.f0); 0];
-            obj.stateECI(1:3) = rotm_E2P*p;
-            
+            obj.stateECI(1:3) = rotm_P2E*p;
+
             % Velocity in perifocal frame
             v = (obj.MU / h) * [-sin(obj.f0); obj.e + cos(obj.f0); 0];
-            obj.stateECI(4:6) = rotm_E2P*v;
+            obj.stateECI(4:6) = rotm_P2E*v;
         end
 
-        function R = rotm_ECI2PFC(obj)
+        function R = rotm_PFC2ECI(obj)
             % Define rotation matrix from ECI to perifocal frame
             cosOmg = cos(obj.Omega);
             sinOmg = sin(obj.Omega);
@@ -96,16 +119,25 @@ classdef SatelliteDynamics < handle
             sinInc = sin(obj.i);
 
             RzOmg = [ cosOmg, sinOmg, 0;...
-                     -sinOmg, cosOmg, 0;...
-                           0,      0, 1];
+                -sinOmg, cosOmg, 0;...
+                0,      0, 1];
             RxInc = [1,       0,      0;...
-                     0,  cosInc, sinInc;...
-                     0, -sinInc, cosInc];
+                0,  cosInc, sinInc;...
+                0, -sinInc, cosInc];
             Rzomg = [cosomg, sinomg, 0;...
-                    -sinomg, cosomg, 0;...
-                          0,      0, 1];
+                -sinomg, cosomg, 0;...
+                0,      0, 1];
 
             R = (Rzomg*RxInc*RzOmg)';
-        end     
+        end
+
+        function f_tb = gravitational_force(obj)
+            % Compute gravitational force acting on the target satellite in target frame
+            r_t = obj.stateECI(1:3);
+            r = norm(r_t);
+            f_t = -obj.MU * r_t / r^3;
+            att = obj.stateECI(7:9);
+            f_tb = angle2dcm(att(3), att(2), att(1), 'ZYX') * f_t;
+        end
     end
 end
