@@ -9,6 +9,7 @@ controlCfg = ControlCfg();
 TargetSatellite = SatelliteDynamics(simCfg.target_init_state, simCfg.dt);
 ChaserSatellite = RelativeDynamics(simCfg.chaser_init_state, simCfg.dt, TargetSatellite);
 Controller = ClfQp(controlCfg, ChaserSatellite);
+% Controller = ClfCbfQp(controlCfg, ChaserSatellite);
 
 u_dist.tau_d = zeros([3, 1]);
 u_dist.f_d = zeros([3, 1]);

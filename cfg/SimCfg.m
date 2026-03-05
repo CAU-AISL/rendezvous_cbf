@@ -10,7 +10,7 @@ classdef SimCfg < handle
     methods
         function obj = SimCfg()
             obj.dt  = 0.01;
-            obj.T   = 100;
+            obj.T   = 150;
             obj.sim_time = 0 : obj.dt : obj.T;
             obj.sim_len = length(obj.sim_time);
             obj.target_init_state = struct('a', 7702455,...

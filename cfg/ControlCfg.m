@@ -18,8 +18,8 @@ classdef ControlCfg < handle
         alpha_sig
         alpha_omg
 
-        a
-        del
+        a_h
+        delta_h
     end
 
     methods
@@ -34,13 +34,13 @@ classdef ControlCfg < handle
             obj.force_lb = [-20; -20; -20];
             obj.force_ub = [20; 20; 20];
 
-            obj.alpha_rho = 1;
-            obj.alpha_vel = 1;
+            obj.alpha_rho = 0.1;
+            obj.alpha_vel = 0.1;
             obj.alpha_sig = 1;
             obj.alpha_omg = 1;
 
-            obj.a = 0.01;
-            obj.del = 1;
+            obj.a_h = 0.015;
+            obj.delta_h = 1;
         end
     end
 end
