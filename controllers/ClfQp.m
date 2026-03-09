@@ -38,7 +38,7 @@ classdef ClfQp < handle
         a_h
         delta_h
 
-        RD  RelativeDynamics
+        RD
     end
 
     methods
@@ -68,7 +68,7 @@ classdef ClfQp < handle
             obj.force_lb = [ControlCfg.force_lb(:); 0];
             obj.force_ub = [ControlCfg.force_ub(:); Inf];
 
-            obj.qp_option = optimoptions('quadprog', 'Display', 'off');
+            obj.qp_option = ControlCfg.qp_option;
 
             obj.a_h = ControlCfg.a_h;
             obj.delta_h = ControlCfg.delta_h;
@@ -197,7 +197,7 @@ classdef ClfQp < handle
             obj.velV = 0.5 * (err_vel' * err_vel);
             obj.V2.rel_pos_vel = obj.rhoV + obj.velV;
             
-            H = blkdiag(eye(3), 0);
+            H = blkdiag(eye(3), 1e-4);
             f = zeros(4,1);
             f(4) = obj.p_weight_f;
             
@@ -233,7 +233,7 @@ classdef ClfQp < handle
             obj.omgV = 0.5 * (err_omg' * err_omg);
             obj.V2.rel_att_omg = obj.sigV + obj.omgV;
             
-            H = blkdiag(eye(3), 0);
+            H = blkdiag(eye(3), 1e-4);
             f = zeros(4,1);
             f(4) = obj.p_weight_m;
 

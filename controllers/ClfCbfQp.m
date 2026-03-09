@@ -37,6 +37,7 @@ classdef ClfCbfQp < ClfQp
             obj.f_nom = NaN;
 
             obj.partial = struct('dh_drho', [], 'd2h_drho2', []);
+            obj.RD = relativeDynamics;
         end
 
         function u_ctrl = command(obj)
@@ -72,10 +73,6 @@ classdef ClfCbfQp < ClfQp
             end
             obj.ref_vel = v_safe;
         end
-        
-        function ref_omg_cal(obj)
-            ref_omg_cal@ClfQp(obj);
-        end
 
         function input_F = command_force(obj)
             obj.f_nom = command_force@ClfQp(obj);
@@ -105,47 +102,16 @@ classdef ClfCbfQp < ClfQp
             
             % Solve
             [force_safe, ~, exitflag] = quadprog(H, f, A, b, [], [], obj.force_lb(1:3), obj.force_ub(1:3), [], obj.qp_option);
-            if exitflag ~= 1
+        
+            if exitflag == 0
+                warning('Force CBF-QP exceeds max iteration number');
+            elseif exitflag == -2
                 warning('Force CBF-QP did not converge, using nominal control');
                 force_safe = obj.f_nom;
             end
             input_F = force_safe;
             obj.f_safe = input_F;
         end
-        
-        % function input_M = command_torque(obj)
-        %     sigma = obj.RD.state(1:3);
-        %     omega = obj.RD.state(4:6);
-        %     if isnan(obj.prev_ref_omg)
-        %         obj.prev_ref_omg = obj.ref_omg;
-        %     end
-        %     domg_r = (obj.ref_omg - obj.prev_ref_omg) / obj.RD.dt;
-        %     obj.prev_ref_omg = obj.ref_omg;
-        %     err_omg = omega - obj.ref_omg;
-        % 
-        %     G = obj.RD.get_G_matrix(sigma);
-        %     C1 = obj.RD.get_C1();
-        %     D1 = obj.RD.get_D1();
-        % 
-        %     % Lie Derivatives for V_omg = V_sig + 0.5 * err_omg' * err_omg
-        %     LfV = sigma' * G * omega + err_omg' * (obj.RD.J_c\(C1*omega + D1) - domg_r);
-        %     LgV = err_omg' / obj.RD.J_c;
-        %     obj.omgV = 0.5 * (err_omg' * err_omg);
-        %     obj.V2.rel_att_omg = obj.sigV + obj.omgV;
-        % 
-        %     H = eye(3);
-        %     f = zeros(3,1);
-        % 
-        %     A = LgV;
-        %     b = -obj.gamma_omg * obj.V2.rel_att_omg - LfV;
-        % 
-        %     [input_M , ~, exitflag] = quadprog(H, f, A, b, [], [], obj.torque_lb(1:3), obj.torque_ub(1:3), [], obj.qp_option);
-        % 
-        %     if exitflag == -2
-        %         % Fallback
-        %         error('QP solver failed to find a solution for command_torque');
-        %     end
-        % end
 
         function partial_rho_t(obj)
             rho = obj.RD.state(7:9);

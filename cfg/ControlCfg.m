@@ -20,11 +20,13 @@ classdef ControlCfg < handle
 
         a_h
         delta_h
+
+        qp_option
     end
 
     methods
         function obj = ControlCfg()
-            obj.gamma_rho = 3;
+            obj.gamma_rho = 1;
             obj.gamma_vel = 0.1;
             obj.gamma_sig = 3;
             obj.gamma_omg = 0.1;
@@ -34,6 +36,8 @@ classdef ControlCfg < handle
             obj.force_lb = [-20; -20; -20];
             obj.force_ub = [20; 20; 20];
 
+            % obj.alpha_rho = 0.2;
+            % obj.alpha_vel = 0.2;
             obj.alpha_rho = 0.1;
             obj.alpha_vel = 0.08;
             obj.alpha_sig = 1;
@@ -41,6 +45,8 @@ classdef ControlCfg < handle
 
             obj.a_h = 0.015;
             obj.delta_h = 1;
+
+            obj.qp_option = optimoptions('quadprog', 'Display', 'off', 'ConstraintTolerance', 1e-5);
         end
     end
 end
