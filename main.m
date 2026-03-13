@@ -1,5 +1,5 @@
-close all; clear; clc;
-
+close all; clear all; clc;
+rng(0);
 addpath(genpath(pwd));
 
 simCfg = SimCfg();
@@ -8,7 +8,9 @@ controlCfg = ControlCfg();
 
 TargetSatellite = SatelliteDynamics(simCfg.target_init_state, simCfg.dt);
 ChaserSatellite = RelativeDynamics(simCfg.chaser_init_state, simCfg.dt, TargetSatellite);
-Controller = ClfQp(controlCfg, ChaserSatellite);
+% ChaserSatellite = StochasticRelative(simCfg.chaser_init_state, simCfg.dt, TargetSatellite);
+% Controller = ClfQp(controlCfg, ChaserSatellite);
+Controller = ClfCbfQp(controlCfg, ChaserSatellite);
 
 u_dist.tau_d = zeros([3, 1]);
 u_dist.f_d = zeros([3, 1]);
@@ -27,6 +29,12 @@ for i = simCfg.sim_time
     simLogger.loggerControl.force.log_data(u_ctrl.f);
     simLogger.loggerControl.omg_d.log_data(Controller.ref_omg);
     simLogger.loggerControl.moment.log_data(u_ctrl.tau);
+    simLogger.loggerLyapunov.V.log_data([Controller.rhoV; Controller.velV; Controller.sigV; Controller.omgV]);
+    simLogger.loggerBarrier.h.log_data(Controller.barrier_value());
 end
+
+timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+saveFilename = fullfile(pwd, sprintf('simLogger_%s.mat', timestamp));
+save(saveFilename, 'simLogger');
 
 run("plot_sim.m");

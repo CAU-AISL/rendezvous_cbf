@@ -4,6 +4,8 @@ classdef LoggerCfg
         loggerRelative
         loggerChaser
         loggerControl
+        loggerLyapunov
+        loggerBarrier
     end
 
     methods
@@ -16,6 +18,8 @@ classdef LoggerCfg
                                         'vel_d', Logger(3, sim_len),...
                                         'omg_d', Logger(3, sim_len),...
                                         'moment', Logger(3, sim_len));
+            obj.loggerLyapunov = struct('V', Logger(4, sim_len));
+            obj.loggerBarrier = struct('h', Logger(1, sim_len));
         end
     end
 end
