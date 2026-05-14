@@ -1,65 +1,71 @@
 classdef StochasticRelative < RelativeDynamics
-
     properties
-        % sigma denotes standarad deviation of Normal Distribution
         sig_rho
         sig_vel
         sig_mrp
         sig_omg
-
-        eps_rho
-        eps_vel
-        eps_mrp
-        eps_omg
+        mu_rho
+        mu_vel
+        mu_mrp
+        mu_omg
+        
+        % LPF 객체 및 백색 노이즈 스펙
+        lpf_rho
+        lpf_vel
+        lpf_mrp
+        lpf_omg
+        w_sig_rho
+        w_sig_vel
+        w_sig_mrp
+        w_sig_omg
+        
     end
-
     methods
-        function obj = StochasticRelative(initial_state, dt, targetSatellite)
-            obj@RelativeDynamics(initial_state, dt, targetSatellite);
+        function obj = StochasticRelative(Cfg, targetSatellite)
+            obj@RelativeDynamics(Cfg, targetSatellite);
             
-            obj.sig_rho = 0.05;
-            obj.sig_vel = 0.01;
-            obj.sig_mrp = deg2rad(1);
-            obj.sig_omg = deg2rad(0.5);
-
-            % obj.sig_rho = 0.005;
-            % obj.sig_vel = 0.01;
-            % obj.sig_mrp = 0.002;
-            % obj.sig_omg = 0.0005;
-
-            obj.eps_rho = 0;
-            obj.eps_vel = 0;
-            obj.eps_mrp = 0;
-            obj.eps_omg = 0;
+            obj.sig_rho = Cfg.sigma.rho;
+            obj.sig_vel = Cfg.sigma.vel;
+            obj.sig_mrp = Cfg.sigma.mrp;
+            obj.sig_omg = Cfg.sigma.omg;
+            obj.mu_rho = Cfg.mu.rho;
+            obj.mu_vel = Cfg.mu.vel;
+            obj.mu_mrp = Cfg.mu.mrp;
+            obj.mu_omg = Cfg.mu.omg;
+            
+            % 1st order LPF Initialization
+            omg_c = 10;
+            obj.lpf_rho = LPF(omg_c, Cfg);
+            obj.lpf_vel = LPF(omg_c, Cfg);
+            obj.lpf_mrp = LPF(omg_c, Cfg);
+            obj.lpf_omg = LPF(omg_c, Cfg);
+            
+            % Distributed amplification of input white noise by 
+            % back-calculating the distributed attenuation of the LPF
+            alpha = obj.lpf_rho.alpha; 
+            scale_factor = sqrt((1 + alpha) / (1 - alpha));
+            obj.w_sig_rho = obj.sig_rho * scale_factor;
+            obj.w_sig_vel = obj.sig_vel * scale_factor;
+            obj.w_sig_mrp = obj.sig_mrp * scale_factor;
+            obj.w_sig_omg = obj.sig_omg * scale_factor;
         end
+        
+        function d_state = dynamics(obj, state, u_ctrl, u_dist)
+            d_state = dynamics@RelativeDynamics(obj, state, u_ctrl, u_dist);
+            % Gaussian noise
+            w_rho = normrnd(obj.mu_rho, obj.w_sig_rho, [3, 1]);
+            w_vel = normrnd(obj.mu_vel, obj.w_sig_vel, [3, 1]);
+            w_mrp = normrnd(obj.mu_mrp, obj.w_sig_mrp, [3, 1]);
+            w_omg = normrnd(obj.mu_omg, obj.w_sig_omg, [3, 1]);
 
-        function dstate = dynamics(obj, x, u_ctrl, u_dist)
-            dstate_ = dynamics@RelativeDynamics(obj, x, u_ctrl, u_dist);
-            dstate = dstate_ + [normrnd(obj.eps_mrp, obj.sig_mrp, 3, 1);...
-                                normrnd(obj.eps_omg, obj.sig_omg, 3, 1);...
-                                normrnd(obj.eps_rho, obj.sig_rho, 3, 1);...
-                                normrnd(obj.eps_vel, obj.sig_vel, 3, 1)];
-        end
-
-        function step(obj, u_ctrl, u_dist)
-            % STEP Performs RK4 integration and updates internal state
-            %
-            % Usage: obj.step(dt, u_ctrl, u_dist, target_state)
             
-            x_curr = obj.state;
+            % Colored Gaussian Noise after 1st order LPF
+            c_rho = obj.lpf_rho.forward(w_rho);
+            c_vel = obj.lpf_vel.forward(w_vel);
+            c_mrp = obj.lpf_mrp.forward(w_mrp);
+            c_omg = obj.lpf_omg.forward(w_omg);
             
-            % RK4 Integration
-            k1 = obj.dynamics(              x_curr, u_ctrl, u_dist);
-            k2 = obj.dynamics(x_curr + obj.dt/2*k1, u_ctrl, u_dist);
-            k3 = obj.dynamics(x_curr + obj.dt/2*k2, u_ctrl, u_dist);
-            k4 = obj.dynamics(  x_curr + obj.dt*k3, u_ctrl, u_dist);
-            
-            % Update State
-            obj.state = x_curr + (obj.dt/6) * (k1 + 2*k2 + 2*k3 + k4);
-
-            obj.get_chaser_pos();
-            obj.get_chaser_euler();
-            obj.R_tc = obj.get_R_tc(obj.state(1:3));
+            d_state = d_state + [c_mrp; c_omg; c_rho; c_vel];
         end
     end
 end

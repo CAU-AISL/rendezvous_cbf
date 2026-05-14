@@ -41,36 +41,36 @@ classdef CbfQp < handle
         partial
     end
     methods
-        function obj = CbfQp(ControlCfg, relativeDynamics)
+        function obj = CbfQp(Cfg, relativeDynamics)
             obj.ref_vel = 0;
             obj.prev_ref_vel = NaN;
             obj.ref_omg = 0;
             obj.prev_ref_omg = NaN;
 
-            obj.gamma_rho  = ControlCfg.gamma_rho;
-            obj.gamma_vel  = ControlCfg.gamma_vel;
-            obj.gamma_sig  = ControlCfg.gamma_sig;
-            obj.gamma_omg  = ControlCfg.gamma_omg;
+            obj.gamma_rho  = Cfg.gamma_rho;
+            obj.gamma_vel  = Cfg.gamma_vel;
+            obj.gamma_sig  = Cfg.gamma_sig;
+            obj.gamma_omg  = Cfg.gamma_omg;
 
-            obj.torque_lb = [ControlCfg.torque_lb(:); 0];
-            obj.torque_ub = [ControlCfg.torque_ub(:); Inf];
-            obj.force_lb = [ControlCfg.force_lb(:); 0];
-            obj.force_ub = [ControlCfg.force_ub(:); Inf];
+            obj.torque_lb = [Cfg.torque_lb(:); 0];
+            obj.torque_ub = [Cfg.torque_ub(:); Inf];
+            obj.force_lb = [Cfg.force_lb(:); 0];
+            obj.force_ub = [Cfg.force_ub(:); Inf];
 
             obj.qp_option = optimoptions('quadprog', 'Display', 'off');
 
-            obj.a_h = ControlCfg.a_h;
-            obj.delta_h = ControlCfg.delta_h;
+            obj.a_h = Cfg.a_h;
+            obj.delta_h = Cfg.delta_h;
 
             obj.p_weight = 1e3;
 
             obj.RD = relativeDynamics;
 
 
-            obj.alpha_rho = ControlCfg.alpha_rho;
-            obj.alpha_vel = ControlCfg.alpha_vel;
-            obj.alpha_sig = ControlCfg.alpha_sig;
-            obj.alpha_omg = ControlCfg.alpha_omg;
+            obj.alpha_rho = Cfg.alpha_rho;
+            obj.alpha_vel = Cfg.alpha_vel;
+            obj.alpha_sig = Cfg.alpha_sig;
+            obj.alpha_omg = Cfg.alpha_omg;
 
             obj.h_rho = NaN;
             obj.h_vel = NaN;

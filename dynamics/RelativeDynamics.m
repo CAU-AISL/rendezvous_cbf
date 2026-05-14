@@ -25,7 +25,7 @@ classdef RelativeDynamics < handle
     
     methods
         % Constructor
-        function obj = RelativeDynamics(initial_state, dt, targetSatellite)
+        function obj = RelativeDynamics(Cfg, targetSatellite)
             % J_c: Inertia matrix (3x3)
             % m_c: Mass (scalar)
             % initial_state: (12x1) Initial state vector
@@ -37,8 +37,9 @@ classdef RelativeDynamics < handle
             obj.inv_J_c = eye(3)/obj.J_c;
             obj.m_c = 38.2;
             obj.MU = 3.986004e14;
-            obj.dt = dt;
+            obj.dt = Cfg.dt;
             
+            initial_state = Cfg.chaser_init_state;
             obj.state = zeros([12, 1]);
             obj.state(1:3) = initial_state.sigma;
             obj.state(4:6) = initial_state.omega;

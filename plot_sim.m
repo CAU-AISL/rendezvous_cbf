@@ -1,36 +1,6 @@
 close all;
 % Ready for plotting the Earth
 
-plot_earth = false;
-if plot_earth
-    [x, y, z] = sphere(50);
-    Re = 6371;
-    x = x*Re;
-    y = y*Re;
-    z = z*Re;
-    load('topo.mat', 'topo'); 
-    orbit_width = 1.5;
-    
-    earthPlot = figure();
-    earthPlot.Theme = 'light';
-    target_orbit_m2km = TargetLogger.state.log(1:3, :).*(10^-3);
-    chaser_orbit_m2km = ChaserLogger.pos.log(:, :).*(10^-3);
-    hold on; grid on;
-    plot3(target_orbit_m2km(1,:), target_orbit_m2km(2,:), target_orbit_m2km(3,:), 'LineWidth', orbit_width);
-    plot3(chaser_orbit_m2km(1,:), chaser_orbit_m2km(2,:), chaser_orbit_m2km(3,:), 'LineWidth', orbit_width);
-    s = surface(x, y, z);
-    s.FaceColor = 'texturemap';    % Activate texture mapping
-    s.CData = topo;                % Assign terrain data
-    s.EdgeColor = 'none';          % Remove grid lines
-    s.FaceAlpha = 0.3;
-    axis equal;
-    view(3);
-    colormap([zeros(64,1), zeros(64,1), linspace(0.5,1,64)';...
-                  linspace(0.5,0.8,64)', linspace(1,0.7,64)', zeros(64,1)]);
-    xlabel("x-axis (km)");
-    ylabel("y-axis (km)");
-    zlabel("z-axis (km)");
-end
 %%
 fig_size = [800, 600];
 line_width = 1.5;
@@ -85,20 +55,20 @@ attPlot.Theme = 'light';
 attPlot.Position(3:4) = fig_size;
 subplot(3, 1, 1);
 hold on; grid on;
-att = plot(simCfg.sim_time, rad2deg(simLogger.loggerRelative.state.log(1,:)), 'LineWidth', line_width);
+att = plot(simCfg.sim_time, simLogger.loggerRelative.state.log(1,:), 'LineWidth', line_width);
 rfa = plot(simCfg.sim_time, zeros(simCfg.sim_len, 1), 'r--', 'LineWidth', line_width);
-ylabel('\sigma_x (deg)', 'Interpreter', 'tex');
+ylabel('\sigma_x', 'Interpreter', 'tex');
 legend([att, rfa], {'Response', 'Reference'});
 subplot(3, 1, 2);
 hold on; grid on;
-plot(simCfg.sim_time, rad2deg(simLogger.loggerRelative.state.log(2,:)), 'LineWidth', line_width);
+plot(simCfg.sim_time, simLogger.loggerRelative.state.log(2,:), 'LineWidth', line_width);
 plot(simCfg.sim_time, zeros(simCfg.sim_len, 1), 'r--', 'LineWidth', line_width);
-ylabel('\sigma_y (deg)', 'Interpreter', 'tex');
+ylabel('\sigma_y', 'Interpreter', 'tex');
 subplot(3, 1, 3);
 hold on; grid on;
-plot(simCfg.sim_time, rad2deg(simLogger.loggerRelative.state.log(3,:)), 'LineWidth', line_width);
+plot(simCfg.sim_time, simLogger.loggerRelative.state.log(3,:), 'LineWidth', line_width);
 plot(simCfg.sim_time, zeros(simCfg.sim_len, 1), 'r--', 'LineWidth', line_width);
-ylabel('\sigma_z (deg)', 'Interpreter', 'tex');
+ylabel('\sigma_z', 'Interpreter', 'tex');
 xlabel('Time (s)', 'Interpreter', 'tex');
 saveas(gcf, 'assets/att_plot.png');
 
@@ -219,7 +189,7 @@ x_max = max(rt(1,:)) + offset;
 x = linspace(x_min, x_max, 100);
 theta = linspace(0, 2*pi, 50);
 [X, Theta] = meshgrid(x, theta);
-R = sqrt(controlCfg.a_h*(X - controlCfg.delta_h).^3);
+R = sqrt(simCfg.a_h*(X - simCfg.delta_h).^3);
 Y = R .* cos(Theta);
 Z = R .* sin(Theta);
 
@@ -228,7 +198,7 @@ rtPlot.Theme = 'light';
 rtPlot.Position(3:4) = fig_size;
 hold on; grid on;
 plot3(rt(1, :), rt(2, :), rt(3, :), 'LineWidth', line_width);
-surf(X, Y, Z, 'EdgeColor', 'none', 'FaceAlpha', 0.3, 'FaceColor', 'r');
+% surf(X, Y, Z, 'EdgeColor', 'none', 'FaceAlpha', 0.1, 'FaceColor', 'r');
 
 meshData = readSurfaceMesh('SmallSat.glb');
 
@@ -248,7 +218,7 @@ camlight('headlight');
 
 view(3);
 xlabel('x_t [m]'); ylabel('y_t [m]'); zlabel('z_t [m]');
-xlim([-5, 30]); ylim([-20, 20]); zlim([-20, 20]);
+% xlim([-5, 30]); ylim([-20, 20]); zlim([-20, 20]);
 saveas(gcf, 'assets/rt_plot.png');
 
 %%
@@ -264,7 +234,7 @@ if sim_flag
     epoch = datetime(epochYear, epochMonth, epochDay, epochHour, epochMinute, epochSecond);
     pos_name = '<Xicrf>';
     att_name = '<qicrf2b>';
-    
+
     startTime = epoch;
     stopTime = startTime + seconds(simCfg.sim_time(end));
     sc = satelliteScenario(startTime,stopTime,simCfg.dt);
@@ -272,16 +242,16 @@ if sim_flag
     targetPos.Name = pos_name;
     targetAtt = timeseries(eul2quat(simLogger.loggerTarget.state.log(7:9, :)'), simCfg.sim_time);
     targetAtt.Name = att_name;
-    target_sat = satellite(sc, targetPos, Name='Target_Sat');
+    target_sat = satellite(sc, targetPos, Name='Sateliite_Target');
     pointAt(target_sat, targetAtt);
-    
+
     chaserPos = timeseries(simLogger.loggerChaser.pos.log(1:3, :)', simCfg.sim_time);
     chaserPos.Name = pos_name;
     chaserAtt = timeseries(eul2quat(simLogger.loggerChaser.att.log(1:3, :)'), simCfg.sim_time);
     chaserAtt.Name = att_name;
-    chaser_sat = satellite(sc, chaserPos, Name='Chaser_Sat');
+    chaser_sat = satellite(sc, chaserPos, Name='Sateliite_Chaser');
     pointAt(chaser_sat, chaserAtt);
-    
+
     ScenarioViewer = satelliteScenarioViewer(sc, CameraReferenceFrame='Inertial');
     ScenarioViewer.Position(3:4) = [1600, 900];
     ScenarioViewer.PlaybackSpeedMultiplier = 3;
@@ -294,4 +264,3 @@ if sim_flag
     play(sc);
     camtarget(ScenarioViewer, target_sat);
 end
-

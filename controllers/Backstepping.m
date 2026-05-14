@@ -35,7 +35,7 @@ classdef Backstepping < handle
     end
 
     methods
-        function obj = Backstepping(ControlCfg, relativeDynamics)
+        function obj = Backstepping(Cfg, relativeDynamics)
             obj.ref_vel = 0;
             obj.prev_ref_vel = NaN;
             obj.ref_omg = 0;
@@ -51,23 +51,23 @@ classdef Backstepping < handle
             obj.V2 = struct('rel_pos_vel', 0,...
                 'rel_att_omg', 0);      % Backstepping x2
 
-            obj.gamma_rho   = ControlCfg.gamma_rho;
-            obj.gamma_vel   = ControlCfg.gamma_vel;
-            obj.gamma_sig   = ControlCfg.gamma_sig;
-            obj.gamma_omg   = ControlCfg.gamma_omg;
+            obj.gamma_rho   = Cfg.gamma_rho;
+            obj.gamma_vel   = Cfg.gamma_vel;
+            obj.gamma_sig   = Cfg.gamma_sig;
+            obj.gamma_omg   = Cfg.gamma_omg;
 
-            obj.torque_lb = ControlCfg.torque_lb;
-            obj.torque_ub = ControlCfg.torque_ub;
-            obj.force_lb = ControlCfg.force_lb;
-            obj.force_ub = ControlCfg.force_ub;
+            obj.torque_lb = Cfg.torque_lb;
+            obj.torque_ub = Cfg.torque_ub;
+            obj.force_lb = Cfg.force_lb;
+            obj.force_ub = Cfg.force_ub;
 
-            obj.force_slack = ControlCfg.force_slack;
-            obj.torque_slack = ControlCfg.torque_slack;
+            obj.force_slack = Cfg.force_slack;
+            obj.torque_slack = Cfg.torque_slack;
 
             obj.qp_option = optimoptions('quadprog', 'Display', 'off');
 
-            obj.a_h = ControlCfg.a_h;
-            obj.delta_h = ControlCfg.delta_h;
+            obj.a_h = Cfg.a_h;
+            obj.delta_h = Cfg.delta_h;
 
             obj.RD = relativeDynamics;
         end

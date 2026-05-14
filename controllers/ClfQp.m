@@ -42,7 +42,7 @@ classdef ClfQp < handle
     end
 
     methods
-        function obj = ClfQp(ControlCfg, relativeDynamics)
+        function obj = ClfQp(Cfg, relativeDynamics)
             obj.ref_vel = 0;
             obj.prev_ref_vel = NaN;
             obj.ref_omg = 0;
@@ -58,20 +58,20 @@ classdef ClfQp < handle
             obj.V2 = struct('rel_pos_vel', 0,...
                             'rel_att_omg', 0);      % Backstepping x2
 
-            obj.gamma_rho  = ControlCfg.gamma_rho;
-            obj.gamma_vel  = ControlCfg.gamma_vel;
-            obj.gamma_sig  = ControlCfg.gamma_sig;
-            obj.gamma_omg  = ControlCfg.gamma_omg;
+            obj.gamma_rho  = Cfg.gamma_rho;
+            obj.gamma_vel  = Cfg.gamma_vel;
+            obj.gamma_sig  = Cfg.gamma_sig;
+            obj.gamma_omg  = Cfg.gamma_omg;
 
-            obj.torque_lb = [ControlCfg.torque_lb(:); 0];
-            obj.torque_ub = [ControlCfg.torque_ub(:); Inf];
-            obj.force_lb = [ControlCfg.force_lb(:); 0];
-            obj.force_ub = [ControlCfg.force_ub(:); Inf];
+            obj.torque_lb = [Cfg.torque_lb(:); 0];
+            obj.torque_ub = [Cfg.torque_ub(:); Inf];
+            obj.force_lb = [Cfg.force_lb(:); 0];
+            obj.force_ub = [Cfg.force_ub(:); Inf];
 
-            obj.qp_option = ControlCfg.qp_option;
+            obj.qp_option = Cfg.qp_option;
 
-            obj.a_h = ControlCfg.a_h;
-            obj.delta_h = ControlCfg.delta_h;
+            obj.a_h = Cfg.a_h;
+            obj.delta_h = Cfg.delta_h;
 
             obj.p_weight_f = 1e3;
             obj.p_weight_m = 1e4;
